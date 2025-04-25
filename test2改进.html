@@ -1,0 +1,52 @@
+<!-- 在progress-container区域增加按钮 -->
+<div class="progress-container">
+    <div>
+        <div class="user-control">
+            <div class="user-tag user-a">用户A</div>
+            <button onclick="adjustProgress('${anime.id}', 'A', -1)">-</button>
+            <input type="number" 
+                   value="${anime.users.A}" 
+                   onchange="setProgress('${anime.id}', 'A', this.value)">
+            <button onclick="adjustProgress('${anime.id}', 'A', 1)">+</button>
+        </div>
+        <div class="progress-bar" onclick="updateProgress(event, '${anime.id}', 'A')">
+            <div class="progress-fill" style="width: ${(anime.users.A/anime.total)*100}%"></div>
+        </div>
+    </div>
+    <!-- 用户B部分同理 -->
+</div>
+
+<style>
+/* 新增样式 */
+.user-control {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.user-control input {
+    width: 50px;
+    padding: 2px;
+    text-align: center;
+}
+</style>
+
+<script>
+// 新增功能函数
+function adjustProgress(id, user, delta) {
+    const anime = animeData.find(item => item.id == id);
+    anime.users[user] = Math.max(0, 
+        Math.min(anime.total, anime.users[user] + delta)
+    );
+    saveData();
+    renderAnimeList();
+}
+
+function setProgress(id, user, value) {
+    const anime = animeData.find(item => item.id == id);
+    anime.users[user] = Math.max(0, 
+        Math.min(anime.total, parseInt(value) || 0)
+    );
+    saveData();
+    renderAnimeList();
+}
+</script>
