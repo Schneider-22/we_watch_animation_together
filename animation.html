@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>追番管理系统</title>
+    <style>
+        /* 基础样式 */
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f6fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .anime-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .cover-img {
+            width: 120px;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 20px;
+        }
+        .progress-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        /* 新增操作按钮样式 */
+        .action-bar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        .edit-btn, .delete-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .drag-handle {
+            cursor: move;
+            color: #666;
+            padding: 0 8px;
+        }
+        .add-form {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+        }
+        .user-a { background: #ca93d8; color: #a93dc4; }
+        .user-b { background: #8bd1e9; color: #125268; }
+        .user-a, .user-b {display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>追番管理系统</h1>
+        
+        <!-- 新增番剧表单 -->
+        <div class="add-form">
+            <h3>添加新番剧</h3>
+            <input type="text" id="animeName" placeholder="番剧名称">
+            <input type="number" id="totalEp" placeholder="总集数">
+            <input type="text" id="coverUrl" placeholder="封面URL">
+            <button onclick="addAnime()">添加</button>
+        </div>
+
+        <div id="anime-list"></div>
+    </div>
+
+    <script>
+        // 初始化数据（带封面图片字段）
+        let animeData = localStorage.getItem('animeData') ? 
+            JSON.parse(localStorage.getItem('animeData')) : 
+            [
+                {
+                    id: Date.now(),
+                    name: "mono女孩",
+                    cover: "https://img.picui.cn/free/2025/04/25/680b37b7dbaa7.png",
+                    total: 13,
+                    updated: 3,
+                    users: { A: 15, B: 18 }
+                }
+            ];
+
+        // 保存数据到本地存储
+        function saveData() {
+            localStorage.setItem('animeData', JSON.stringify(animeData));
+        }
+
+        // 渲染函数（支持拖拽排序）
+        function renderAnimeList() {
+            const container = document.getElementById('anime-list');
+            container.innerHTML = '';
+            
+            animeData.forEach((anime, index) => {
+                const card = document.createElement('div');
+                card.className = 'anime-card';
+                card.dataset.id = anime.id;
+                card.innerHTML = `
+                    <div class="action-bar">
+                        <span class="drag-handle">☰</span>
+                        <button class="edit-btn" onclick="editAnime('${anime.id}')">✎</button>
+                        <button class="delete-btn" onclick="deleteAnime('${anime.id}')">×</button>
+                    </div>
+                    <div style="display: flex;">
+                        <img src="${anime.cover}" class="cover-img" alt="${anime.name}">
+                        <div style="flex:1">
+                            <h3>${anime.name}</h3>
+                            <div class="meta">
+                                <span>总集数: ${anime.total}</span>
+                                <span>｜已更新至: 第${anime.updated}集</span>
+                            </div>
+                            <div class="progress-container">
+                                ${renderUserProgress(anime, 'A')}
+                                ${renderUserProgress(anime, 'B')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // 初始化拖拽排序
+            initDragAndDrop();
+        }
+
+        // 渲染用户进度条
+        function renderUserProgress(anime, user) {
+            return `
+                <div>
+                    <div class="user-tag user-${user.toLowerCase()}">用户${user}</div>
+                    <div>已观看：第${anime.users[user]}集</div>
+                    <div class="progress-bar" onclick="updateProgress(event, '${anime.id}', '${user}')">
+                        <div class="progress-fill" 
+                             style="width: ${(anime.users[user]/anime.total)*100}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 新增功能函数
+        function addAnime() {
+            const newAnime = {
+                id: Date.now(),
+                name: document.getElementById('animeName').value,
+                cover: document.getElementById('coverUrl').value,
+                total: parseInt(document.getElementById('totalEp').value),
+                updated: 0,
+                users: { A: 0, B: 0 }
+            };
+            animeData.push(newAnime);
+            saveData();
+            renderAnimeList();
+        }
+
+        function deleteAnime(id) {
+            if(confirm('不追了吗？确认要删掉吗？o(╥﹏╥)o')) {
+                animeData = animeData.filter(item => item.id != id);
+                saveData();
+                renderAnimeList();
+            }
+        }
+
+        function editAnime(id) {
+            const anime = animeData.find(item => item.id == id);
+            // 实现编辑弹窗逻辑（此处可扩展模态框）
+            const newName = prompt('修改番剧名称', anime.name);
+            if(newName) {
+                anime.name = newName;
+                saveData();
+                renderAnimeList();
+            }
+        }
+
+        // 进度更新功能
+        function updateProgress(event, id, user) {
+            const rect = event.target.getBoundingClientRect();
+            const percentage = (event.clientX - rect.left) / rect.width;
+            const anime = animeData.find(item => item.id == id);
+            anime.users[user] = Math.round(anime.total * percentage);
+            saveData();
+            renderAnimeList();
+        }
+
+        // 拖拽排序实现
+        function initDragAndDrop() {
+            let draggedItem = null;
+
+            document.querySelectorAll('.anime-card').forEach(item => {
+                item.draggable = true;
+                
+                item.ondragstart = (e) => {
+                    draggedItem = item;
+                    setTimeout(() => item.style.opacity = '0.5', 0);
+                };
+
+                item.ondragover = (e) => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(e.clientY);
+                    const currentPos = animeData.findIndex(a => a.id == draggedItem.dataset.id);
+                    const newPos = animeData.findIndex(a => a.id == afterElement?.dataset.id);
+
+                    if(afterElement == null) {
+                        animeData.push(animeData.splice(currentPos, 1)[0]);
+                    } else {
+                        animeData.splice(newPos, 0, animeData.splice(currentPos, 1)[0]);
+                    }
+                    saveData();
+                    renderAnimeList();
+                };
+
+                item.ondragend = () => {
+                    item.style.opacity = '1';
+                    draggedItem = null;
+                };
+            });
+        }
+
+        function getDragAfterElement(y) {
+            return [...document.querySelectorAll('.anime-card:not(.dragging)')]
+                .reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height/2;
+                    if(offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child }
+                    } else {
+                        return closest
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // 初始化加载
+        window.onload = renderAnimeList;
+    </script>
+</body>
+</html>
